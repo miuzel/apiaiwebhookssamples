@@ -2,13 +2,13 @@ const http = require('http');
 const https = require('https');
 const express = require('express');
 const bodyParser = require('body-parser');
+const uniqueRandomArray = require('unique-random-array');
 const app = express();
 
 app.use(bodyParser.json());
 
-const recipepuppyHost = 'http://www.recipepuppy.com/api/?q=';
-const currencyConvertHost = "http://api.fixer.io/latest?";
-const chucknorrisHost = 'https://api.chucknorris.io/jokes/random';
+const currencyConvertHost = "https://data.fixer.io/api/latest?";
+const jokeapi = 'http://api.laifudao.com/open/xiaohua.json';
 const wikiPediaApiHost = 'https://en.wikipedia.org/w/api.php?'; //https://www.mediawiki.org/wiki/API:Opensearch
 
 app.get('/dummyget', function (req, res) {
@@ -20,31 +20,25 @@ app.get('/dummyget', function (req, res) {
 app.post('/webhook', function (req, res) {
 
     if (req.body.result.parameters['Bored']) {
-        callChuckNorrisFact()
+        callJoke()
             .then((output) => {
-                let result = toApiAiResponseMessage(output.value, output.value, toTelgramObject(output.value, 'Markdown'));
+                const randomJoke = uniqueRandomArray(output);
+                const joke = randomJoke().content;
+                let result = toApiAiResponseMessage(joke, joke, toTelgramObject(joke, 'Markdown'));
                 res.setHeader('Content-Type', 'application/json');
                 res.send(JSON.stringify(result));
             })
             .catch(errorHandler);
     }
-    else if (req.body.result.parameters['FoodItem']) {
-        var fooditem = req.body.result.parameters['FoodItem'];
-        callRecipePuppy(fooditem)
-            .then((output) => {
-
-                let displayText = `Found recipe for: ${output.title} at ${output.href}`;
-                let telegramText = htmlEntities('*Found*-' + output.title + '\n' + '* It has following Ingredients*-' + output.ingredients + '\n' + '* You can check it out at*- ' + output.href);
-                let result = toApiAiResponseMessage(displayText, displayText, toTelgramObject(telegramText, 'Markdown'));
-                console.log(result);
-                res.setHeader('Content-Type', 'application/json');
-                res.send(JSON.stringify(result));
-            })
-            .catch(errorHandler);
-    }
-    else if (req.body.result.parameters['currency-from'] && req.body.result.parameters['currency-to']) {
+    else if (req.body.result.parameters['currency-from']) {
         var currencyFrom = req.body.result.parameters['currency-from'];
-        var currencyTo = req.body.result.parameters['currency-to'];
+        var currencyTo;
+        if(!req.body.result.parameters['currency-to']){
+            currencyTo = 'USD';
+        }
+        else {
+            currencyTo = req.body.result.parameters['currency-to'];
+        }
         var number = 1.0;
         if (req.body.result.parameters['number']) {
             number = parseFloat(req.body.result.parameters['number']);
@@ -67,15 +61,15 @@ app.post('/webhook', function (req, res) {
                 res.send(JSON.stringify(result));
             });
     }
-    else if (req.body.result.parameters['wikisearchterm']) {
-        var searchTerm = req.body.result.parameters['wikisearchterm'];
+    else if (req.body.result.parameters['wikiItem']) {
+        var searchTerm = req.body.result.parameters['wikiItem'];
         callWikiPediaApi(searchTerm)
             .then((output) => {
                 let displayText = `Nothing Found for: ${searchTerm}`;
                 let result;
                 if (output && output[0]) {
-                    displayText = `Here is what I found in Wikipedia about ${output[1][0]}: ${output[2][0]}`;
-                    let telegramText = htmlEntities(`Here is what I found in Wikipedia about *${output[1][0]}*: ${output[2][0]} \n\n Read more at [WikiPedia](${output[3][0]})`);
+                    displayText = `我翻了翻，看看我找到了啥吧 ${output[1][0]}: ${output[2][0]}`;
+                    let telegramText = htmlEntities(`我翻了翻，看看我找到了啥吧 *${output[1][0]}*: ${output[2][0]} \n\n 查看更多： [WikiPedia](${output[3][0]})`);
                     result = toApiAiResponseMessage(displayText, displayText, toTelgramObject(telegramText, 'Markdown'));
                 }
                 res.setHeader('Content-Type', 'application/json');
@@ -92,25 +86,6 @@ app.post('/webhook', function (req, res) {
         res.send(JSON.stringify({ 'speech': "No Proper hook found", 'displayText': "No Proper hook found" }));
     }
 });
-
-
-function callRecipePuppy(fooditem) {
-    return new Promise((resolve, reject) => {
-        http.get(recipepuppyHost + fooditem, (res) => {
-            let body = '';
-            res.on('data', (d) => body += d);
-            res.on('end', () => {
-                let jO = JSON.parse(body);
-                let firstItem = jO.results[Math.floor((Math.random() * jO.results.length))];
-                resolve(firstItem);
-            });
-
-            res.on('error', (error) => {
-                reject(error);
-            });
-        });
-    });
-}
 
 function callFixerIo(currencyFrom, currencyTo) {
     return new Promise((resolve, reject) => {
@@ -131,9 +106,9 @@ function callFixerIo(currencyFrom, currencyTo) {
     });
 }
 
-function callChuckNorrisFact() {
+function callJoke() {
     return new Promise((resolve, reject) => {
-        https.get(chucknorrisHost, (res) => {
+        https.get(jokeapi, (res) => {
             let body = '';
             res.on('data', (d) => body += d);
             res.on('end', () => {
