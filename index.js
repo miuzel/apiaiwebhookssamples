@@ -7,7 +7,7 @@ const app = express();
 
 app.use(bodyParser.json());
 
-const currencyConvertHost = "https://data.fixer.io/api/latest?";
+const currencyConvertHost = "https://data.fixer.io/api/latest?access_key=6257cba0a2109738cb067e097b3c6f0b&";
 const jokeapi = 'http://api.laifudao.com/open/xiaohua.json';
 const wikiPediaApiHost = 'https://en.wikipedia.org/w/api.php?'; //https://www.mediawiki.org/wiki/API:Opensearch
 
